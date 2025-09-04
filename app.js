@@ -13,7 +13,7 @@ const pino = require('pino');
 // Configuration
 const CSV_FILE = 'contacts.csv'; // Fichier CSV pour stocker les contacts
 const CONTACT_PREDEFINI = '23791008288@s.whatsapp.net'; // Numéro du contact prédéfini
-const PHONE_NUMBER = '237673518167'; // Votre numéro WhatsApp pour le pairing code
+const PHONE_NUMBER = '237677519251'; // Votre numéro WhatsApp pour le pairing code
 const AUTH_MODE = process.env.AUTH_MODE || null; // 'qrcode' ou 'pairing', null pour demander à l’utilisateur
 
 // Créer un serveur HTTP pour empêcher l’inactivité
