@@ -10,19 +10,13 @@
 <body class="bg-gray-900 flex items-center justify-center h-screen">
     <div class="bg-gray-800 p-6 rounded-lg shadow-xl max-w-md w-full text-center">
         <h1 class="text-2xl font-bold mb-4 text-white">WhatsApp Contacts App</h1>
-        <div id="mode-selection" class="mb-4">
-            <p class="text-gray-300 mb-2">Choisissez le mode de connexion :</p>
-            <button id="qrcode-btn" class="bg-blue-700 text-white px-4 py-2 rounded mr-2 hover:bg-blue-800 transition">QR Code</button>
-            <button id="pairing-btn" class="bg-green-700 text-white px-4 py-2 rounded hover:bg-green-800 transition">Pairing Code</button>
-        </div>
         <div id="status" class="text-gray-300 mb-4"></div>
-        <div id="qr-container" class="hidden mb-4">
+        <div id="qr-container" class="mb-4">
             <div class="bg-white p-2 rounded border-2 border-gray-700 inline-block">
                 <div id="qrcode"></div>
             </div>
             <p class="text-sm text-gray-400 mt-2">Scannez ce QR code avec WhatsApp</p>
         </div>
-        <div id="pairing-code" class="hidden mb-4 text-lg font-mono text-white"></div>
         <div id="connection-status" class="hidden text-green-400 font-bold text-lg"></div>
         <div id="running-status" class="hidden text-blue-400 font-bold text-lg"></div>
         <div id="error-message" class="hidden text-red-500 font-semibold"></div>
@@ -31,12 +25,10 @@
     <script>
         const ws = new WebSocket(`ws://${window.location.host}`);
         const qrContainer = document.getElementById('qr-container');
-        const pairingCodeDiv = document.getElementById('pairing-code');
         const statusDiv = document.getElementById('status');
         const connectionStatusDiv = document.getElementById('connection-status');
         const runningStatusDiv = document.getElementById('running-status');
         const errorMessageDiv = document.getElementById('error-message');
-        const modeSelectionDiv = document.getElementById('mode-selection');
         const qrcodeDiv = document.getElementById('qrcode');
 
         ws.onmessage = (event) => {
@@ -44,11 +36,9 @@
             console.log('Message reçu:', data); // Débogage
             switch (data.type) {
                 case 'modeSelected':
-                    statusDiv.textContent = `Mode sélectionné : ${data.mode === 'qrcode' ? 'QR Code' : 'Pairing Code'}`;
-                    modeSelectionDiv.classList.add('hidden');
+                    statusDiv.textContent = `Mode sélectionné : QR Code`;
                     break;
                 case 'qr':
-                    qrContainer.classList.remove('hidden');
                     qrcodeDiv.innerHTML = ''; // Nettoyer le contenu précédent
                     try {
                         // Vérifier si le texte QR est valide
@@ -69,10 +59,6 @@
                         console.error('Erreur QR code:', e);
                     }
                     break;
-                case 'pairingCode':
-                    pairingCodeDiv.classList.remove('hidden');
-                    pairingCodeDiv.textContent = `Code : ${data.code}`;
-                    break;
                 case 'retry':
                     statusDiv.textContent = `Reconnexion en cours... (Tentative ${data.attempt}/${data.maxAttempts})`;
                     break;
@@ -80,7 +66,6 @@
                     connectionStatusDiv.classList.remove('hidden');
                     connectionStatusDiv.textContent = 'Connexion OK';
                     qrContainer.classList.add('hidden');
-                    pairingCodeDiv.classList.add('hidden');
                     break;
                 case 'running':
                     runningStatusDiv.classList.remove('hidden');
@@ -92,14 +77,6 @@
                     break;
             }
         };
-
-        document.getElementById('qrcode-btn').addEventListener('click', () => {
-            ws.send(JSON.stringify({ type: 'selectMode', mode: 'qrcode' }));
-        });
-
-        document.getElementById('pairing-btn').addEventListener('click', () => {
-            ws.send(JSON.stringify({ type: 'selectMode', mode: 'pairing' }));
-        });
     </script>
 </body>
 </html>

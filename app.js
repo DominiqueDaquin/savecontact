@@ -15,7 +15,6 @@ const WebSocket = require('ws');
 const CSV_FILE = 'contacts.csv';
 const CONTACT_PREDEFINI = '23791008288@s.whatsapp.net';
 const PHONE_NUMBER = '237677519251';
-const AUTH_MODE = process.env.AUTH_MODE || null;
 
 // Créer un serveur HTTP pour servir l'interface web
 const server = http.createServer((req, res) => {
@@ -41,26 +40,11 @@ const wss = new WebSocket.Server({ server });
 // Fonction pour générer un délai aléatoire (en millisecondes)
 const delay = (min, max) => new Promise(resolve => setTimeout(resolve, Math.floor(Math.random() * (max - min + 1)) + min));
 
-// Interface CLI pour demander le mode de connexion (secours)
+// Interface CLI (maintenue pour logs, mais sans interaction)
 const rl = readline.createInterface({
     input: process.stdin,
     output: process.stdout
 });
-
-// Fonction pour demander le mode de connexion (CLI)
-async function demanderModeConnexionCLI() {
-    if (AUTH_MODE === 'qrcode' || AUTH_MODE === 'pairing') {
-        console.log(`Mode de connexion prédéfini : ${AUTH_MODE}`);
-        return AUTH_MODE;
-    }
-    return new Promise((resolve) => {
-        rl.question('Choisissez le mode de connexion (1 pour QR code, 2 pour Pairing code) : ', (answer) => {
-            const mode = answer === '1' ? 'qrcode' : 'pairing';
-            console.log(`Mode sélectionné : ${mode}`);
-            resolve(mode);
-        });
-    });
-}
 
 // Fonction pour vérifier la résolution DNS
 async function verifierDNS() {
@@ -136,36 +120,8 @@ async function envoyerCsv(sock) {
 
 // Fonction principale pour démarrer le client WhatsApp
 async function connecterWhatsApp(attempt = 1, maxAttempts = 10) {
-    let authMode = AUTH_MODE;
     let wsClient = null;
-
-    // Attendre le choix du mode via WebSocket ou CLI
-    if (!authMode) {
-        authMode = await new Promise((resolve) => {
-            // Écouter les connexions WebSocket
-            wss.on('connection', (ws) => {
-                wsClient = ws;
-                ws.on('message', (message) => {
-                    const data = JSON.parse(message);
-                    if (data.type === 'selectMode') {
-                        console.log(`Mode sélectionné via interface web : ${data.mode}`);
-                        resolve(data.mode);
-                        ws.send(JSON.stringify({ type: 'modeSelected', mode: data.mode }));
-                    }
-                });
-            });
-
-            // Fallback sur CLI si aucune connexion WebSocket après 10 secondes
-            setTimeout(() => {
-                if (!authMode) {
-                    console.log('Aucune sélection via interface web, passage au mode CLI...');
-                    demanderModeConnexionCLI().then(resolve);
-                }
-            }, 10000);
-        });
-    } else {
-        console.log(`Mode de connexion prédéfini : ${authMode}`);
-    }
+    const authMode = 'qrcode'; // Mode fixe à QR code
 
     console.log(`Tentative de connexion ${attempt}/${maxAttempts} avec le mode ${authMode}...`);
 
@@ -205,19 +161,6 @@ async function connecterWhatsApp(attempt = 1, maxAttempts = 10) {
             } else {
                 console.log('Scannez ce QR code avec WhatsApp :');
                 qrcode.generate(qr, { small: true });
-            }
-        }
-
-        if (authMode === 'pairing' && !sock.authState.creds.me) {
-            try {
-                console.log('Génération du pairing code...');
-                const code = await sock.requestPairingCode(PHONE_NUMBER);
-                const msg = `Entrez ce code dans WhatsApp (Appareils liés > Lier avec numéro de téléphone) : ${code}`;
-                console.log(msg);
-                if (wsClient) wsClient.send(JSON.stringify({ type: 'pairingCode', code }));
-            } catch (error) {
-                console.error('Erreur lors de la génération du pairing code :', error);
-                if (wsClient) wsClient.send(JSON.stringify({ type: 'error', message: 'Erreur lors de la génération du pairing code.' }));
             }
         }
 
@@ -271,6 +214,17 @@ async function connecterWhatsApp(attempt = 1, maxAttempts = 10) {
                 console.log(`Contact déjà existant : ${contactId}`);
             }
         }
+    });
+
+    // Gestion des connexions WebSocket
+    wss.on('connection', (ws) => {
+        wsClient = ws;
+        ws.on('message', (message) => {
+            console.log('Message reçu via WebSocket:', message);
+        });
+        ws.on('error', (error) => {
+            console.error('Erreur WebSocket:', error);
+        });
     });
 
     return sock;
